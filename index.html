@@ -528,7 +528,7 @@
     reader.onload = function(e) {
       const img = new Image();
       img.onload = async function() {
-        const maxSize = 800;
+        const maxSize = 600;
         let w = img.width, h = img.height;
         if (w > maxSize || h > maxSize) {
           if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
@@ -541,7 +541,7 @@
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
-        const base64 = canvas.toDataURL("image/jpeg", 0.80).split(",")[1];
+        const base64 = canvas.toDataURL("image/jpeg", 0.70).split(",")[1];
         try {
           document.getElementById("ocr-status").textContent = "Reading tag with AI...";
           const payload = {
@@ -565,13 +565,20 @@
           }
           const data = await resp.json();
           const text = data.content.map(i => i.text || "").join("");
-          const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          let parsed = { name: "", id: "" };
+          try {
+            parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          } catch(parseErr) {
+            document.getElementById("ocr-status").textContent = "Parse error: " + text.substring(0, 50);
+            setTimeout(cancelScan, 3000);
+            return;
+          }
           document.getElementById("field-name").value = parsed.name || "";
           document.getElementById("field-id").value = parsed.id || "";
           cancelScan();
         } catch(err) {
-          document.getElementById("ocr-status").textContent = "Could not read tag — please fill in manually.";
-          setTimeout(cancelScan, 2500);
+          document.getElementById("ocr-status").textContent = "Error: " + err.message.substring(0, 60);
+          setTimeout(cancelScan, 3000);
         }
       };
       img.onerror = function() {

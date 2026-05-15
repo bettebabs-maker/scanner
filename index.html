@@ -524,9 +524,20 @@
     document.getElementById("scanning-overlay").classList.add("show");
     document.getElementById("ocr-status").textContent = "Processing image...";
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const base64 = e.target.result.split(",")[1];
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = async function() {
+      URL.revokeObjectURL(objectUrl);
+      const maxSize = 1024;
+      let w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
       try {
         document.getElementById("ocr-status").textContent = "Reading tag with AI...";
         const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -538,7 +549,7 @@
             messages: [{
               role: "user",
               content: [
-                { type: "image", source: { type: "base64", media_type: file.type, data: base64 } },
+                { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
                 { type: "text", text: 'This is a product tag from a toy or educational reward item. Extract only the product name and product ID or SKU number. Respond ONLY with valid JSON, no markdown, no extra text: {"name": "...", "id": "..."}. If you cannot clearly read a field, use an empty string.' }
               ]
             }]
@@ -555,7 +566,7 @@
         setTimeout(cancelScan, 2000);
       }
     };
-    reader.readAsDataURL(file);
+    img.src = objectUrl;
     event.target.value = "";
   }
 

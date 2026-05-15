@@ -524,26 +524,27 @@
     document.getElementById("scanning-overlay").classList.add("show");
     document.getElementById("ocr-status").textContent = "Processing image...";
 
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    img.onload = async function() {
-      URL.revokeObjectURL(objectUrl);
-      const maxSize = 1024;
-      let w = img.width, h = img.height;
-      if (w > maxSize || h > maxSize) {
-        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-        else { w = Math.round(w * maxSize / h); h = maxSize; }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
-      try {
-        document.getElementById("ocr-status").textContent = "Reading tag with AI...";
-        const resp = await fetch("https://slc-proxy.bettebabs.workers.dev", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = async function() {
+        const maxSize = 800;
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const base64 = canvas.toDataURL("image/jpeg", 0.80).split(",")[1];
+        try {
+          document.getElementById("ocr-status").textContent = "Reading tag with AI...";
+          const payload = {
             model: "claude-sonnet-4-20250514",
             max_tokens: 300,
             messages: [{
@@ -553,20 +554,33 @@
                 { type: "text", text: 'This is a product tag from a toy or educational reward item. Extract only the product name and product ID or SKU number. Respond ONLY with valid JSON, no markdown, no extra text: {"name": "...", "id": "..."}. If you cannot clearly read a field, use an empty string.' }
               ]
             }]
-          })
-        });
-        const data = await resp.json();
-        const text = data.content.map(i => i.text || "").join("");
-        const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-        document.getElementById("field-name").value = parsed.name || "";
-        document.getElementById("field-id").value = parsed.id || "";
-        cancelScan();
-      } catch(err) {
-        document.getElementById("ocr-status").textContent = "Could not read tag — please fill in manually.";
+          };
+          const resp = await fetch("https://slc-proxy.bettebabs.workers.dev", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!resp.ok) {
+            throw new Error("HTTP " + resp.status);
+          }
+          const data = await resp.json();
+          const text = data.content.map(i => i.text || "").join("");
+          const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+          document.getElementById("field-name").value = parsed.name || "";
+          document.getElementById("field-id").value = parsed.id || "";
+          cancelScan();
+        } catch(err) {
+          document.getElementById("ocr-status").textContent = "Could not read tag — please fill in manually.";
+          setTimeout(cancelScan, 2500);
+        }
+      };
+      img.onerror = function() {
+        document.getElementById("ocr-status").textContent = "Could not load image — please try again.";
         setTimeout(cancelScan, 2000);
-      }
+      };
+      img.src = e.target.result;
     };
-    img.src = objectUrl;
+    reader.readAsDataURL(file);
     event.target.value = "";
   }
 

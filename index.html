@@ -375,20 +375,6 @@
 
     <button class="btn-primary" onclick="doLogin()">Sign In</button>
 
-    <button class="config-toggle" onclick="toggleConfig()">⚙ configure sheet connection</button>
-
-    <div id="config-panel" class="config-panel">
-      <div class="card">
-        <div class="info-box">
-          Paste your Google Apps Script Web App URL here to log tags to your Google Sheet.
-        </div>
-        <div class="form-group">
-          <label>Apps Script URL</label>
-          <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/..." style="font-size:13px;">
-        </div>
-        <button class="btn-secondary" onclick="saveWebhook()">Save URL</button>
-      </div>
-    </div>
   </div>
 
   <!-- SCAN SCREEN -->
@@ -461,7 +447,7 @@
   const PASSCODE = "rewards";
   let currentCenter = "";
   let sessionLog = [];
-  let webhookUrl = localStorage.getItem("slc_webhook") || "";
+  let webhookUrl = "https://script.google.com/macros/s/AKfycbwADJFcWWOgh9UFC0SiV3Q1prlA8sAlnLfGvO8tACYOlZ2nkALGEypAJseTL_wlGH5p/exec";
 
   if (webhookUrl) document.getElementById("webhook-url").value = webhookUrl;
 

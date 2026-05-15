@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SLC Rewards — Tag Scanner</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #003087;
+    --blue-accent: #4DB6E8;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.10);
+    --border-med: rgba(0,0,0,0.18);
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b7280;
+    --text-hint: #9ca3af;
+    --success-bg: #ecfdf5;
+    --success-text: #065f46;
+    --danger: #dc2626;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ---- SCREENS ---- */
+  .screen { display: none; flex-direction: column; padding: 1.5rem 1rem 2rem; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ---- LOGIN ---- */
+  .login-top { text-align: center; padding: 2.5rem 0 2rem; }
+  .brand-mark {
+    display: inline-block;
+    background: var(--navy);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+  }
+  .login-title { font-size: 24px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; }
+  .login-sub { font-size: 14px; color: var(--text-secondary); margin-top: 5px; }
+
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    color: var(--text-primary);
+    background: #fafafa;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .form-group input:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(0,48,135,0.10);
+    background: white;
+  }
+
+  .btn-primary {
+    width: 100%;
+    height: 48px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary:active { transform: scale(0.98); background: #002070; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    width: 100%;
+    height: 44px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:active { background: #f0f0f0; }
+
+  .error-msg { font-size: 13px; color: var(--danger); margin-top: 10px; text-align: center; min-height: 18px; }
+
+  .config-toggle {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-hint);
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 14px;
+    background: none;
+    border: none;
+    width: 100%;
+    padding: 4px;
+  }
+  .config-toggle:hover { color: var(--text-secondary); }
+
+  .config-panel { margin-top: 10px; display: none; }
+  .config-panel.open { display: block; }
+
+  .info-box {
+    background: #EEF4FF;
+    border: 0.5px solid #B5D4F4;
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #0C447C;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .info-box a { color: #185FA5; }
+
+  /* ---- SCAN SCREEN ---- */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0 1.25rem;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 10px; }
+  .top-bar-logo { font-size: 15px; font-weight: 700; color: var(--navy); letter-spacing: -0.3px; }
+  .signout-btn {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .signout-btn:hover { background: rgba(0,0,0,0.06); }
+
+  .center-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .center-badge strong { color: var(--text-primary); font-weight: 600; }
+
+  .scan-area {
+    border: 2px dashed var(--border-med);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 1.25rem;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fafafa;
+  }
+  .scan-area:active { background: #f0f4ff; border-color: var(--navy); }
+  .scan-icon { font-size: 40px; color: var(--navy); margin-bottom: 8px; }
+  .scan-label { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+  .scan-hint { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
+
+  .fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.25rem; }
+
+  .field-group { display: flex; flex-direction: column; }
+  .field-group label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+  .field-group input {
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    color: var(--text-primary);
+    background: white;
+    outline: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field-group input:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(0,48,135,0.10);
+  }
+
+  .field-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+
+  .qty-toggle { display: flex; gap: 8px; }
+  .qty-btn {
+    flex: 1;
+    height: 44px;
+    border: 1px solid var(--border-med);
+    border-radius: var(--radius-md);
+    background: white;
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .qty-btn.selected {
+    background: var(--navy);
+    color: white;
+    border-color: var(--navy);
+  }
+
+  .submit-row { display: flex; gap: 10px; }
+  .submit-row .btn-primary { flex: 2; height: 48px; font-size: 15px; }
+  .submit-row .btn-secondary { flex: 1; height: 48px; font-size: 14px; }
+
+  .success-flash {
+    background: var(--success-bg);
+    color: var(--success-text);
+    border-radius: var(--radius-md);
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 1rem;
+    display: none;
+    border: 0.5px solid #a7f3d0;
+  }
+  .success-flash.show { display: block; }
+
+  /* ---- SESSION LOG ---- */
+  .session-log { margin-top: 1.5rem; flex: 1; }
+  .log-header {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-hint);
+    margin-bottom: 10px;
+  }
+  .log-item {
+    background: white;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 11px 13px;
+    margin-bottom: 7px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .log-item-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .log-item-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+  .log-empty { font-size: 13px; color: var(--text-hint); text-align: center; padding: 1.5rem 0; }
+
+  /* ---- SCANNING OVERLAY ---- */
+  .scanning-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .scanning-overlay.show { display: flex; }
+  .scanning-frame {
+    width: 270px;
+    height: 180px;
+    border: 2px solid var(--blue-accent);
+    border-radius: 14px;
+    position: relative;
+    margin-bottom: 20px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+  }
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--blue-accent);
+    box-shadow: 0 0 8px var(--blue-accent);
+    animation: scanmove 1.8s ease-in-out infinite;
+  }
+  @keyframes scanmove { 0% { top: 0; } 100% { top: 100%; } }
+  .scan-corners::before, .scan-corners::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+  }
+  .scanning-label { font-size: 15px; color: rgba(255,255,255,0.75); margin-bottom: 12px; }
+  .ocr-status {
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px 16px;
+    width: 270px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+    min-height: 36px;
+    margin-bottom: 20px;
+  }
+  .cancel-scan-btn {
+    background: transparent;
+    color: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: var(--radius-md);
+    padding: 9px 24px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .cancel-scan-btn:active { background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- LOGIN SCREEN -->
+  <div id="screen-login" class="screen active">
+    <div class="login-top">
+      <div class="brand-mark">SLC Rewards</div>
+      <div class="login-title">Motivation Station</div>
+      <div class="login-sub">Tag Scanner</div>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label>Center Number</label>
+        <input type="text" id="center-input" placeholder="e.g. 0324" maxlength="8" autocomplete="off" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label>Passcode</label>
+        <input type="password" id="passcode-input" placeholder="Enter passcode" autocomplete="off">
+      </div>
+      <div id="login-error" class="error-msg"></div>
+    </div>
+
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+
+    <button class="config-toggle" onclick="toggleConfig()">⚙ configure sheet connection</button>
+
+    <div id="config-panel" class="config-panel">
+      <div class="card">
+        <div class="info-box">
+          Paste your Google Apps Script Web App URL here to log tags to your Google Sheet.
+        </div>
+        <div class="form-group">
+          <label>Apps Script URL</label>
+          <input type="text" id="webhook-url" placeholder="https://script.google.com/macros/s/..." style="font-size:13px;">
+        </div>
+        <button class="btn-secondary" onclick="saveWebhook()">Save URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCAN SCREEN -->
+  <div id="screen-scan" class="screen">
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <span class="top-bar-logo">SLC Rewards</span>
+      </div>
+      <button class="signout-btn" onclick="signOut()">
+        <i class="ti ti-logout"></i> Sign out
+      </button>
+    </div>
+
+    <div class="center-badge">
+      <i class="ti ti-building" style="font-size:14px;"></i>
+      Center <strong id="center-display"></strong> &nbsp;&middot;&nbsp; <span id="date-display"></span>
+    </div>
+
+    <div id="success-flash" class="success-flash">
+      <i class="ti ti-circle-check"></i> Tag logged successfully
+    </div>
+
+    <div class="card">
+      <div class="scan-area" id="scan-trigger" onclick="startScan()">
+        <div class="scan-icon"><i class="ti ti-camera"></i></div>
+        <div class="scan-label">Tap to scan tag</div>
+        <div class="scan-hint">Opens your camera — point at the tag</div>
+      </div>
+
+      <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleImageCapture(event)">
+
+      <div class="fields">
+        <div class="field-group">
+          <label>Product Name</label>
+          <input type="text" id="field-name" placeholder="Tap to edit">
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Product ID</label>
+            <input type="text" id="field-id" placeholder="e.g. 615126-0341" inputmode="text">
+          </div>
+          <div class="field-group">
+            <label>Qty</label>
+            <div class="qty-toggle">
+              <button class="qty-btn selected" id="qty-1" onclick="setQty(1)">1</button>
+              <button class="qty-btn" id="qty-2" onclick="setQty(2)">2</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn-primary" onclick="submitTag()">
+          <i class="ti ti-check"></i> Log Tag
+        </button>
+        <button class="btn-secondary" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <div class="session-log">
+      <div class="log-header">This session</div>
+      <div id="log-list"><div class="log-empty">No tags logged yet</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SCANNING OVERLAY -->
+<div id="scanning-overlay" class="scanning-overlay">
+  <div class="scanning-frame">
+    <div class="scan-line"></div>
+  </div>
+  <div class="scanning-label">Reading tag...</div>
+  <div class="ocr-status" id="ocr-status">Hold tag steady in the frame</div>
+  <button class="cancel-scan-btn" onclick="cancelScan()">Cancel</button>
+</div>
+
+<script>
+  const PASSCODE = "slcrewards2025";
+  let currentCenter = "";
+  let currentQty = 1;
+  let sessionLog = [];
+  let webhookUrl = localStorage.getItem("slc_webhook") || "";
+
+  if (webhookUrl) document.getElementById("webhook-url").value = webhookUrl;
+
+  function toggleConfig() {
+    const p = document.getElementById("config-panel");
+    p.classList.toggle("open");
+  }
+
+  function saveWebhook() {
+    const v = document.getElementById("webhook-url").value.trim();
+    if (v) {
+      localStorage.setItem("slc_webhook", v);
+      webhookUrl = v;
+      alert("Sheet URL saved.");
+    } else {
+      alert("Please paste a valid URL first.");
+    }
+  }
+
+  function doLogin() {
+    const center = document.getElementById("center-input").value.trim();
+    const pass = document.getElementById("passcode-input").value.trim();
+    const err = document.getElementById("login-error");
+    err.textContent = "";
+    if (!center) { err.textContent = "Please enter your center number."; return; }
+    if (pass !== PASSCODE) { err.textContent = "Incorrect passcode. Please try again."; return; }
+    currentCenter = center;
+    document.getElementById("center-display").textContent = center;
+    document.getElementById("date-display").textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    showScreen("screen-scan");
+  }
+
+  document.getElementById("passcode-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") doLogin();
+  });
+
+  function signOut() {
+    currentCenter = "";
+    sessionLog = [];
+    document.getElementById("center-input").value = "";
+    document.getElementById("passcode-input").value = "";
+    document.getElementById("login-error").textContent = "";
+    document.getElementById("log-list").innerHTML = '<div class="log-empty">No tags logged yet</div>';
+    clearForm();
+    showScreen("screen-login");
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  }
+
+  function startScan() {
+    document.getElementById("camera-input").click();
+  }
+
+  function handleImageCapture(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    document.getElementById("scanning-overlay").classList.add("show");
+    document.getElementById("ocr-status").textContent = "Processing image...";
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64 = e.target.result.split(",")[1];
+      try {
+        document.getElementById("ocr-status").textContent = "Reading tag with AI...";
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 300,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: file.type, data: base64 } },
+                { type: "text", text: 'This is a product tag from a toy or educational reward item. Extract only the product name and product ID or SKU number. Respond ONLY with valid JSON, no markdown, no extra text: {"name": "...", "id": "..."}. If you cannot clearly read a field, use an empty string.' }
+              ]
+            }]
+          })
+        });
+        const data = await resp.json();
+        const text = data.content.map(i => i.text || "").join("");
+        const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+        document.getElementById("field-name").value = parsed.name || "";
+        document.getElementById("field-id").value = parsed.id || "";
+        cancelScan();
+      } catch(err) {
+        document.getElementById("ocr-status").textContent = "Could not read tag — please fill in manually.";
+        setTimeout(cancelScan, 2000);
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  }
+
+  function cancelScan() {
+    document.getElementById("scanning-overlay").classList.remove("show");
+  }
+
+  function setQty(n) {
+    currentQty = n;
+    document.getElementById("qty-1").classList.toggle("selected", n === 1);
+    document.getElementById("qty-2").classList.toggle("selected", n === 2);
+  }
+
+  function clearForm() {
+    document.getElementById("field-name").value = "";
+    document.getElementById("field-id").value = "";
+    setQty(1);
+  }
+
+  async function submitTag() {
+    const name = document.getElementById("field-name").value.trim();
+    const prodId = document.getElementById("field-id").value.trim();
+    if (!name && !prodId) {
+      alert("Please scan or enter at least a product name or ID before logging.");
+      return;
+    }
+
+    const entry = {
+      date: new Date().toLocaleDateString("en-US"),
+      center: currentCenter,
+      name: name,
+      id: prodId,
+      qty: currentQty
+    };
+
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry)
+        });
+      } catch(e) {
+        console.warn("Sheet logging failed:", e);
+      }
+    }
+
+    sessionLog.unshift(entry);
+    renderLog();
+
+    const flash = document.getElementById("success-flash");
+    flash.classList.add("show");
+    setTimeout(() => flash.classList.remove("show"), 2500);
+    clearForm();
+  }
+
+  function renderLog() {
+    const list = document.getElementById("log-list");
+    if (sessionLog.length === 0) {
+      list.innerHTML = '<div class="log-empty">No tags logged yet</div>';
+      return;
+    }
+    list.innerHTML = sessionLog.map(e => `
+      <div class="log-item">
+        <div class="log-item-name">${e.name || "(no name)"}</div>
+        <div class="log-item-meta">ID: ${e.id || "—"} &nbsp;&middot;&nbsp; Qty: ${e.qty} &nbsp;&middot;&nbsp; ${e.date}</div>
+      </div>
+    `).join("");
+  }
+</script>
+</body>
+</html>

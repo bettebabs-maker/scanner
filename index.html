@@ -411,9 +411,15 @@
           <label>Product Name</label>
           <input type="text" id="field-name" placeholder="Tap to edit">
         </div>
-        <div class="field-group">
-          <label>Product ID</label>
-          <input type="text" id="field-id" placeholder="e.g. 615126-0341" inputmode="text">
+        <div class="field-row">
+          <div class="field-group">
+            <label>Product ID</label>
+            <input type="text" id="field-id" placeholder="e.g. 103080" inputmode="text">
+          </div>
+          <div class="field-group">
+            <label>Center (Tag)</label>
+            <input type="text" id="field-center-tag" placeholder="from tag">
+          </div>
         </div>
       </div>
 
@@ -537,7 +543,7 @@
               role: "user",
               content: [
                 { type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } },
-                { type: "text", text: 'This is a product tag from a toy or educational reward item. Extract only the product name and product ID or SKU number. Respond ONLY with valid JSON, no markdown, no extra text: {"name": "...", "id": "..."}. If you cannot clearly read a field, use an empty string.' }
+                { type: "text", text: 'This is a reward item tag from a Sylvan Learning Motivation Station. Extract exactly these three fields:\n1. Product name: the text in the middle of the tag (e.g. "Glitter Sugar Star")\n2. Center number: the number AFTER the dash on the date line (e.g. if it says "5/18/26-8350" the center number is "8350")\n3. Product ID: the standalone number below the date line, before the quantity in parentheses (e.g. if it says "103080 (2/2)" the product ID is "103080")\n\nIgnore: the large token number at the top, the small number on the left, the quantity in parentheses like (2/2), and the location code like C02.\n\nRespond ONLY with valid JSON, no markdown, no extra text: {"name": "...", "center": "...", "id": "..."}. If you cannot clearly read a field, use an empty string.' }
               ]
             }]
           };
@@ -556,7 +562,7 @@
             return;
           }
           const text = data.content.map(i => i.text || "").join("");
-          let parsed = { name: "", id: "" };
+          let parsed = { name: "", center: "", id: "" };
           try {
             parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
           } catch(parseErr) {
@@ -566,6 +572,7 @@
           }
           document.getElementById("field-name").value = parsed.name || "";
           document.getElementById("field-id").value = parsed.id || "";
+          document.getElementById("field-center-tag").value = parsed.center || "";
           cancelScan();
         } catch(err) {
           document.getElementById("ocr-status").textContent = "Error: " + err.message.substring(0, 60);
@@ -589,6 +596,7 @@
   function clearForm() {
     document.getElementById("field-name").value = "";
     document.getElementById("field-id").value = "";
+    document.getElementById("field-center-tag").value = "";
   }
 
   async function submitTag() {
@@ -603,7 +611,9 @@
       date: new Date().toLocaleDateString("en-US"),
       center: currentCenter,
       name: name,
-      id: prodId
+      id: prodId,
+      qty: 1,
+      centerTag: document.getElementById("field-center-tag").value.trim()
     };
 
     if (webhookUrl) {
@@ -637,7 +647,7 @@
     list.innerHTML = sessionLog.map(e => `
       <div class="log-item">
         <div class="log-item-name">${e.name || "(no name)"}</div>
-        <div class="log-item-meta">ID: ${e.id || "—"} &nbsp;&middot;&nbsp; ${e.date}</div>
+        <div class="log-item-meta">ID: ${e.id || "—"} &nbsp;&middot;&nbsp; Tag Center: ${e.centerTag || "—"} &nbsp;&middot;&nbsp; ${e.date}</div>
       </div>
     `).join("");
   }
